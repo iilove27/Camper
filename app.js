@@ -14,11 +14,13 @@ const LocalStrategy = require('passport-local');
 const User = require('./models/user');
 const mongoSanitize = require('express-mongo-sanitize');
 const helmet = require('helmet');
-
 const userRoutes = require('./routes/users');
 const campgroundsRoutes = require('./routes/campgrounds');
 const reviewsRoutes = require('./routes/reviews');
-mongoose.connect('mongodb://localhost:27017/yelp-camp');
+const MongoDBStore = require("connect-mongo");
+// const dbUrl = process.env.DB_URL;
+const dbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
+mongoose.connect(dbUrl);
 
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:"));
@@ -57,6 +59,7 @@ const connectSrcUrls = [
     "https://a.tiles.mapbox.com/",
     "https://b.tiles.mapbox.com/",
     "https://events.mapbox.com/",
+    "https://cloudinary.com/"
 ];
 const fontSrcUrls = [];
 app.use(
@@ -72,7 +75,7 @@ app.use(
                 "'self'",
                 "blob:",
                 "data:",
-                "https://res.cloudinary.com/YOURACCOUNT/", //SHOULD MATCH YOUR CLOUDINARY ACCOUNT! 
+                "https://res.cloudinary.com/dv7ir4yrz/", //SHOULD MATCH YOUR CLOUDINARY ACCOUNT! 
                 "https://images.unsplash.com/",
             ],
             fontSrc: ["'self'", ...fontSrcUrls],
@@ -80,11 +83,19 @@ app.use(
     })
 );
 
+const secret = process.env.SECRET || 'yoyoyoyo'
+const store = MongoDBStore.create({
+    mongoUrl: dbUrl,
+    crypto: {secret: secret},
+    touchAfter: 24 * 3600
+});
 
+store.on("error", function(e) {console.log("SESSON ERROR", e)})
 
 const sessionConfig = {
+    store,
     name: "session",
-    secret: 'thisshouldbe a better secret',
+    secret: secret,
     resave: false,
     saveUninitialized: true,
     cookie: {
